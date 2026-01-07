@@ -12,44 +12,32 @@
 
 #include "push_swap.h"
 #include <stdlib.h>
-#define MAX_COST 99999
 
-static void get_distances(t_node *node, t_list *src, t_list *dest,
-							int *src_fwd, int *dest_fwd, int *src_rev, int *dest_rev)
+static void set_move_strategy(t_node *node, int src_fwd, int dest_fwd,
+							  int src_rev, int dest_rev)
 {
-	*src_fwd = node->index % src->size;
-	*dest_fwd = node->target % dest->size;
-	*src_rev = src->size - *src_fwd;
-	*dest_rev = dest->size - *dest_fwd;
-}
+	int costs[4];
 
-static int get_min_cost(t_node *node, t_list *source, t_list *destination,
-						int src_fwd, int dest_fwd, int src_rev, int dest_rev)
-{
-	int rr_cost;
-	int rrr_cost;
-	int mixed_cost;
-	int min_cost;
-
-    rr_cost = dest_fwd;
-	rrr_cost = dest_rev;
-	if (src_fwd > dest_fwd)
-		rr_cost = src_fwd;
-	if (src_rev > dest_rev)
-		rrr_cost = src_rev;
-	if (node->index < source->size / 2 && node->target > destination->size / 2)
-		mixed_cost = src_fwd + dest_rev;
-	else if (node->index > source->size / 2 && node->target < destination->size / 2)
-		mixed_cost = src_rev + dest_fwd;
+	costs[0] = ft_max(src_fwd, dest_fwd);
+	costs[1] = ft_max(src_rev, dest_rev);
+	costs[2] = src_fwd + dest_rev;
+	costs[3] = src_rev + dest_fwd;
+	node->cost = ft_min(ft_min(costs[0], costs[1]), ft_min(costs[2], costs[3]));
+	init_move_counts(node);
+	if (node->cost == costs[0])
+		set_rr_moves(node, src_fwd, dest_fwd);
+	else if (node->cost == costs[1])
+		set_rrr_moves(node, src_rev, dest_rev);
+	else if (node->cost == costs[2])
+	{
+		node->ra_count = src_fwd;
+		node->rrb_count = dest_rev;
+	}
 	else
-		mixed_cost = MAX_COST;
-	if (rr_cost < rrr_cost && rr_cost < mixed_cost)
-		min_cost = rr_cost;
-	else if (rrr_cost < mixed_cost)
-		min_cost = rrr_cost;
-	else
-		min_cost = mixed_cost;
-	return min_cost;
+	{
+		node->rra_count = src_rev;
+		node->rb_count = dest_fwd;
+	}
 }
 
 /*
@@ -69,7 +57,7 @@ void calculate_cost(t_list *source, t_list *destination)
 	while (node != NULL)
 	{
 		get_distances(node, source, destination, &src_fwd, &dest_fwd, &src_rev, &dest_rev);
-		node->cost = get_min_cost(node, source, destination, src_fwd, dest_fwd, src_rev, dest_rev);
+		set_move_strategy(node, src_fwd, dest_fwd, src_rev, dest_rev);
 		node = node->next;
 	}
 }
